@@ -70,9 +70,26 @@ export async function requestDecision(req: SamDecisionRequest): Promise<SamDecis
     }
 
     const data = await response.json();
+
+    const normalized: SamDecisionResponse = {
+      riskScore: typeof data?.riskScore === 'number' ? data.riskScore : 0.5,
+      mode: (data?.mode as SamMode) ?? 'ASSIST',
+      reason: typeof data?.reason === 'string' ? data.reason : '',
+      explanation: typeof data?.explanation === 'string' ? data.explanation : '',
+
+      // IMPORTANT: ensure arrays always exist
+      riskFactors: Array.isArray(data?.riskFactors) ? data.riskFactors : [],
+      guardrails: Array.isArray(data?.guardrails) ? data.guardrails : [],
+      nextActions: Array.isArray(data?.nextActions) ? data.nextActions : [],
+
+      // ensure source always exists
+      source: typeof data?.source === 'string' ? data.source : 'sam',
+    };
+
     connectionStatus = { connected: true, lastError: null };
-    console.log('SAM decision received:', data);
-    return data as SamDecisionResponse;
+    console.log('SAM decision received:', normalized);
+    return normalized;
+
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
