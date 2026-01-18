@@ -1,0 +1,138 @@
+# Solace Agent Mesh Orchestrator Agent Configurations
+
+log:
+  stdout_log_level: INFO
+  log_file_level: INFO
+  log_file: orchestrator-agent.log
+
+apps:
+  - name: orchestrator-agent_app
+    app_base_path: .
+    app_module: solace_agent_mesh.agent.sac.app
+    broker:
+      dev_mode: ${SOLACE_DEV_MODE, false}
+      broker_url: ${SOLACE_BROKER_URL, ws://localhost:8008}
+      broker_username: ${SOLACE_BROKER_USERNAME, default}
+      broker_password: ${SOLACE_BROKER_PASSWORD, default}
+      broker_vpn: ${SOLACE_BROKER_VPN, default}
+      temporary_queue: ${USE_TEMPORARY_QUEUES, true}
+
+    app_config:
+      namespace: ${NAMESPACE}
+      supports_streaming: true
+      agent_name: "OrchestratorAgent"
+      display_name: "OrchestratorAgent"
+      model:
+        model: ${LLM_SERVICE_PLANNING_MODEL_NAME}
+        api_base: ${LLM_SERVICE_ENDPOINT}
+        api_key: ${LLM_SERVICE_API_KEY}
+        cache_strategy: "5m"
+
+      instruction: |
+        You are the Orchestrator Agent for the Failsafe AI system. Your primary responsibility is to route decision requests based on preliminary risk assessment and coordinate agent calls.
+
+        ## Input Format
+        You receive a JSON payload with:
+        - board: 2D array representing the game board (0=empty, other=occupied)
+        - currentPiece: type of current tetris piece (I, O, T, S, Z, J, L)
+        - x, y, rotation: current piece position
+        - metrics: { engagementScore, blindAcceptStreak, overrideRate, hesitationRate }
+
+        ## Routing Rules (based on preliminary risk)
+        
+        **Step 1: Compute Preliminary Risk (cheap heuristic)**
+        - Count holes in board (empty cells below occupied cells)
+        - Find max column height
+        - Calculate bumpiness (height differences between adjacent columns)
+        - Preliminary Risk = min(1.0, holes*0.03 + maxHeight*0.015 + bumpiness*0.02 + (1-engagementScore)*0.2 + min(blindAcceptStreak/10, 0.3))
+
+        **Step 2: Route based on preliminary risk**
+        - If risk < 0.35:
+          - Return unified decision directly with mode: ASSIST, minimal guardrails
+          - Optionally call failsafe-risk for refinement (but not required)
+        - If 0.35 <= risk < 0.7:
+          - Call failsafe-risk to get refined risk assessment
+          - Call failsafe-policy to determine mode based on risk
+          - Return unified decision with riskScore, mode, reason, guardrails
+        - If risk >= 0.7:
+          - Call ALL agents in sequence: failsafe-monitor -> failsafe-risk -> failsafe-policy -> failsafe-explain
+          - Return comprehensive unified decision
+
+        ## Output Format (STRICT JSON)
+        Return a single JSON object:
+        {
+          "riskScore": number (0-1),
+          "riskFactors": [string],
+          "mode": "ASSIST" | "EXPLAIN_ONLY" | "MANUAL_CONFIRM",
+          "reason": string,
+          "guardrails": [string],
+          "explanation": string,
+          "nextActions": [string],
+          "source": "sam"
+        }
+
+        ## Agent Communication
+        Use the agent_card tool to discover available agents, then send A2A requests to:
+        - failsafe-monitor: Computes board features (holes, height, bumpiness, etc.)
+        - failsafe-risk: Assesses risk based on features
+        - failsafe-policy: Determines mode based on risk
+        - failsafe-explain: Generates explanation and next actions
+
+        ## Examples
+        Low risk example:
+        {"riskScore": 0.25, "riskFactors": [], "mode": "ASSIST", "reason": "Low risk state", "guardrails": ["Stay engaged"], "explanation": "Board is in good shape. Keep up the solid play.", "nextActions": ["Continue current strategy"], "source": "sam"}
+
+        High risk example:
+        {"riskScore": 0.82, "riskFactors": ["High hole count", "Tall stack", "Top-out danger"], "mode": "MANUAL_CONFIRM", "reason": "Critical risk: multiple hazard factors detected", "guardrails": ["Slow down", "Verify placements", "Avoid risky moves"], "explanation": "Manual mode: slow down and verify each placement carefully.", "nextActions": ["Take your time", "Double-check the board", "Consider alternatives"], "source": "sam"}
+
+      inject_system_purpose: true
+      inject_response_format: true
+      inject_user_profile: true
+      session_service:
+        type: "sql"
+        database_url: "${ORCHESTRATOR_DATABASE_URL, sqlite:///orchestrator.db}"
+        default_behavior: "PERSISTENT"
+      artifact_service:
+        type: "filesystem"
+        base_path: "/tmp/samv2"
+        artifact_scope: namespace
+
+      artifact_handling_mode: "reference"
+      enable_embed_resolution: true
+      enable_artifact_content_instruction: true
+      data_tools_config:
+        sqlite_memory_threshold_mb: 100
+        max_result_preview_rows: 50
+        max_result_preview_bytes: 4096
+
+      tools:
+        - group_name: artifact_management
+          tool_type: builtin-group
+        - tool_type: builtin-group
+          group_name: "data_analysis"
+
+      agent_card:
+        description: "The Orchestrator component. It manages tasks and coordinates multi-agent workflows for the Failsafe AI system."
+        defaultInputModes: [text]
+        defaultOutputModes: [text, file]
+        skills:
+        - id: strategic_planning
+          name: Strategic Planning
+          description: Analyzes complex requests and creates structured execution plans, breaking down multi-step goals into logical sequences with clear checkpoints and progress tracking.
+
+        - id: agent_coordination
+          name: Agent Coordination
+          description: Identifies the most suitable specialized agents for specific tasks and coordinates multi-agent workflows, managing data handoffs and execution sequences to achieve complex objectives efficiently.
+
+        - id: artifact_management
+          name: Artifact Management
+          description: Creates, transforms, and manages various artifact types including documents, reports, and data files, with capabilities for content generation, formatting, embedding dynamic data, and applying sophisticated data transformations.
+
+      agent_card_publishing:
+        interval_seconds: 10
+      agent_discovery:
+        enabled: true
+      inter_agent_communication:
+        allow_list: ["*"]
+
+        request_timeout_seconds: 600

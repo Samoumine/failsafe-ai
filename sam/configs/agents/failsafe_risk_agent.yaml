@@ -1,0 +1,75 @@
+# Solace Agent Mesh Agent Configuration
+
+log:
+  stdout_log_level: INFO
+  log_file_level: DEBUG
+  log_file: a2a_agent.log
+
+apps:
+  - name: "FailsafeRisk__app"
+    app_base_path: .
+    app_module: solace_agent_mesh.agent.sac.app
+    broker:
+      dev_mode: ${SOLACE_DEV_MODE, false}
+      broker_url: ${SOLACE_BROKER_URL, ws://localhost:8008}
+      broker_username: ${SOLACE_BROKER_USERNAME, default}
+      broker_password: ${SOLACE_BROKER_PASSWORD, default}
+      broker_vpn: ${SOLACE_BROKER_VPN, default}
+      temporary_queue: ${USE_TEMPORARY_QUEUES, true}
+
+    app_config:
+      namespace: "${NAMESPACE}"
+      supports_streaming: false
+      agent_name: "FailsafeRisk"
+      display_name: "Failsafe Risk Agent"
+      model:
+        model: ${LLM_SERVICE_GENERAL_MODEL_NAME}
+        api_base: ${LLM_SERVICE_ENDPOINT}
+        api_key: ${LLM_SERVICE_API_KEY}
+        cache_strategy: "5m"
+
+      instruction: |
+        Input is features JSON from MonitorAgent plus original metrics.
+        Return STRICT JSON only:
+        {"riskScore":number,"riskFactors":[string]}
+        riskScore 0..1.
+        Use rules: high holes, high height, high topOutDanger, high reliance increase risk.
+      
+      tools: 
+        - tool_type: builtin-group
+          group_name: artifact_management
+
+      session_service: 
+        type: "sql"
+        default_behavior: "PERSISTENT"
+        database_url: "${FAILSAFE_RISK_DATABASE_URL, sqlite:///failsafe_risk.db}"
+      artifact_service:
+        type: "filesystem"
+        base_path: "/tmp/samv2"
+        artifact_scope: namespace
+      
+      artifact_handling_mode: "reference"
+      enable_embed_resolution: true
+      enable_artifact_content_instruction: true
+      data_tools_config:
+        sqlite_memory_threshold_mb: 100
+        max_result_preview_rows: 50
+        max_result_preview_bytes: 4096
+
+      # Agent Card Definition
+      agent_card:
+        description: |
+          Assesses overall risk based on board state and player reliance signals.
+        defaultInputModes: [text] 
+        defaultOutputModes: [text, file] 
+        skills: []
+      
+      # Discovery & Communication
+      agent_card_publishing: 
+        interval_seconds: 10
+      agent_discovery: 
+        enabled: true
+      inter_agent_communication:
+        allow_list: ["*"] 
+        deny_list: [] 
+        request_timeout_seconds: 600

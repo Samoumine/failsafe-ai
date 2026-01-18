@@ -1,0 +1,138 @@
+
+log:
+  stdout_log_level: INFO
+  log_file_level: DEBUG
+  log_file: webui_app.log
+
+apps:
+  - name: a2a_webui_app
+    app_base_path: .
+    app_module: solace_agent_mesh.gateway.http_sse.app
+
+    broker:
+      dev_mode: ${SOLACE_DEV_MODE, false}
+      broker_url: ${SOLACE_BROKER_URL, ws://localhost:8008}
+      broker_username: ${SOLACE_BROKER_USERNAME, default}
+      broker_password: ${SOLACE_BROKER_PASSWORD, default}
+      broker_vpn: ${SOLACE_BROKER_VPN, default}
+      temporary_queue: ${USE_TEMPORARY_QUEUES, true}
+
+    app_config:
+      namespace: ${NAMESPACE}
+      session_secret_key: "${SESSION_SECRET_KEY}"
+
+      model:
+        model: ${LLM_SERVICE_GENERAL_MODEL_NAME}
+        api_base: ${LLM_SERVICE_ENDPOINT}
+        api_key: ${LLM_SERVICE_API_KEY}
+        cache_strategy: "5m"
+
+      artifact_service:
+        type: "filesystem"
+        base_path: "/tmp/samv2"
+        artifact_scope: namespace
+
+      session_service: 
+        type: "sql"
+        database_url: "${WEB_UI_GATEWAY_DATABASE_URL, sqlite:///webui_gateway.db}"
+        default_behavior: "PERSISTENT"
+
+      gateway_id: ${WEBUI_GATEWAY_ID}
+      fastapi_host: ${FASTAPI_HOST}
+      fastapi_port: ${FASTAPI_PORT, 8000}
+      cors_allowed_origins:
+        - "http://localhost:3000"
+        - "http://127.0.0.1:3000"
+
+      # Platform Service Configuration (runs as second app in this template)
+      platform_service:
+        url: "${PLATFORM_SERVICE_URL, http://localhost:8001}"
+
+      # OAuth2 Authentication (Community: false, Enterprise: true)
+      external_auth_service_url: ${EXTERNAL_AUTH_SERVICE_URL}
+      external_auth_provider: ${EXTERNAL_AUTH_PROVIDER, generic}
+      frontend_use_authorization: ${FRONTEND_USE_AUTHORIZATION, false}
+
+      enable_embed_resolution: ${ENABLE_EMBED_RESOLUTION}
+      gateway_artifact_content_limit_bytes: ${GATEWAY_ARTIFACT_LIMIT_BYTES, 10000000}
+      sse_max_queue_size: ${SSE_MAX_QUEUE_SIZE, 200}
+
+      system_purpose: >
+        The system is an AI Chatbot with agentic capabilities.
+        It will use the agents available to provide information,
+        reasoning and general assistance for the users in this system.
+        **Always return useful artifacts and files that you create to the user.**
+        Provide a status update before each tool call.
+        Your external name is Agent Mesh.
+
+      response_format: >
+        Responses should be clear, concise, and professionally toned.
+        Format responses to the user in Markdown using appropriate formatting.
+
+      # --- Frontend Config Passthrough ---
+      frontend_welcome_message: 
+      frontend_bot_name: Solace Agent Mesh
+      frontend_collect_feedback: false
+      frontend_logo_url: 
+
+      task_logging:
+        enabled: true
+        log_status_updates: true
+        log_artifact_events: true
+        log_file_parts: true
+        max_file_part_size_bytes: 10240
+      
+      # --- Frontend Feature Flags ---
+      frontend_feature_enablement:
+        background_tasks: true
+
+      # --- Background Tasks Configuration ---
+      background_tasks:
+        default_timeout_ms: 3600000
+
+      # --- Speech Configuration (STT/TTS) ---
+      speech:
+        stt:
+          provider: azure
+          azure:
+            api_key: "${AZURE_SPEECH_KEY}"
+            region: "${AZURE_SPEECH_REGION}"
+            language: en-US
+        
+        tts:
+          provider: ${TTS_PROVIDER, gemini}
+          
+          azure:
+            api_key: "${AZURE_SPEECH_KEY}"
+            region: "${AZURE_SPEECH_REGION}"
+            default_voice: "en-US-Andrew:DragonHDLatestNeural"
+            voices:
+              - "en-US-Ava:DragonHDLatestNeural"
+              - "en-US-Ava3:DragonHDLatestNeural"
+              - "en-US-Andrew:DragonHDLatestNeural"
+              - "en-US-Alloy:DragonHDLatestNeural"
+              - "en-US-DavisNeural"
+              - "en-US-JennyNeural"
+          
+          gemini:
+            api_key: "${GEMINI_API_KEY}"
+            model: "gemini-2.5-flash-preview-tts"
+            default_voice: "Kore"
+            language: "en-US"
+            voices:
+              - "Kore"
+              - "Puck"
+              - "Zephyr"
+        
+        speechTab:
+          advancedMode: false
+          speechToText:
+            speechToText: true
+            engineSTT: "external"
+            languageSTT: "en-US"
+          textToSpeech:
+            textToSpeech: true
+            engineTTS: "external"
+            voice: "Kore"
+            playbackRate: 1.0
+            cacheTTS: true

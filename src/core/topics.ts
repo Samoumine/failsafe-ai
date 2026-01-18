@@ -1,0 +1,16 @@
+export const Topics = {
+  GAME_START: 'game:start',
+  GAME_OVER: 'game:over',
+  GAME_PAUSE: 'game:pause',
+  PIECE_MOVE: 'piece:move',
+  PIECE_ROTATE: 'piece:rotate',
+  PIECE_DROP: 'piece:drop',
+  PIECE_LOCK: 'piece:lock',
+  LINE_CLEAR: 'line:clear',
+  SCORE_UPDATE: 'score:update',
+  RISK_CHANGE: 'risk:change',
+  ENGAGEMENT_CHANGE: 'engagement:change',
+  SUGGESTION: 'suggestion',
+  FAILSAFE_RISK: 'failsafe:risk',
+  FAILSAFE_MODE: 'failsafe:mode',
+} as const;

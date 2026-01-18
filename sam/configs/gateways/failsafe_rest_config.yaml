@@ -1,0 +1,58 @@
+# Solace Agent Mesh: failsafe_rest Gateway Configuration
+
+log:
+  stdout_log_level: INFO
+  log_file_level: DEBUG
+  log_file: "failsafe_rest_gateway.log"
+
+apps:
+  - name: failsafe_rest_gateway_app
+    app_base_path: .
+    app_module: src.failsafe_rest.app
+
+    broker:
+      dev_mode: ${SOLACE_DEV_MODE, false}
+      broker_url: ${SOLACE_BROKER_URL, ws://localhost:8008}
+      broker_username: ${SOLACE_BROKER_USERNAME, default}
+      broker_password: ${SOLACE_BROKER_PASSWORD, default}
+      broker_vpn: ${SOLACE_BROKER_VPN, default}
+      temporary_queue: ${USE_TEMPORARY_QUEUES, true}
+
+    app_config:
+      namespace: ${NAMESPACE}
+      gateway_id: failsafe-rest-gw-01
+      
+      artifact_service:
+        type: "filesystem"
+        base_path: "/tmp/samv2"
+        artifact_scope: namespace
+
+      system_purpose: >
+        This gateway exposes a deterministic decision workflow for a human–machine safety system.
+        
+        It orchestrates multiple specialized agents to:
+        - analyze gameplay state and player interaction signals
+        - assess risk and loss-of-control conditions
+        - select an appropriate human–automation mode
+        - generate concise, actionable explanations
+        
+        The gateway returns structured JSON only.
+        It does not behave as a conversational assistant.
+
+      response_format: >
+        Responses must be returned as strict JSON.
+        
+        The response should be concise, machine-readable, and suitable for real-time UI consumption.
+        No Markdown, no conversational text, no additional commentary outside the defined schema.
+
+      # enable_embed_resolution: true
+      # gateway_artifact_content_limit_bytes: 10485760
+      # gateway_recursive_embed_depth: 3
+
+      # --- FailsafeRest Specific Parameters ---
+      gateway_port: 8002
+      
+      # Control fallback behavior:
+      # - true: Use local computation if OrchestratorAgent fails (default, backward compatible)
+      # - false: Return HTTP 500 error if OrchestratorAgent fails (strict mode)
+      allow_fallback: ${FAILSAFE_ALLOW_FALLBACK, true}
