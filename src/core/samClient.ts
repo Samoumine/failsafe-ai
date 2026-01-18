@@ -42,7 +42,7 @@ export function getConnectionStatus(): SamConnectionStatus {
 
 export async function requestDecision(req: SamDecisionRequest): Promise<SamDecisionResponse | null> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 1500);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const SAM_BASE_URL = import.meta.env.VITE_SAM_BASE_URL || 'http://localhost:8002';
