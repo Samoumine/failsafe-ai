@@ -1,1 +1,5 @@
 solace-agent-mesh~=1.13.6
+fastapi
+uvicorn
+httpx
+pydantic

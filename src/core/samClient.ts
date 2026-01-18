@@ -45,8 +45,14 @@ export async function requestDecision(req: SamDecisionRequest): Promise<SamDecis
   const timeoutId = setTimeout(() => controller.abort(), 1500);
 
   try {
-    const SAM_BASE_URL = import.meta.env.VITE_SAM_BASE_URL;
-    const response = await fetch(`${SAM_BASE_URL}/workflow/decision`, {
+    const SAM_BASE_URL = import.meta.env.VITE_SAM_BASE_URL || 'http://localhost:8002';
+
+    const endpoint = SAM_BASE_URL.includes('onrender.com')
+      ? `${SAM_BASE_URL}/api/decision`
+      : `${SAM_BASE_URL}/workflow/decision`;
+
+    const response = await fetch(endpoint, {
+
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

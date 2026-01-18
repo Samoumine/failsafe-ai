@@ -1,5 +1,6 @@
 import sys
 import json
+import os
 import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -7,6 +8,7 @@ from typing import List, Literal, Optional
 from fastapi.middleware.cors import CORSMiddleware
 
 print(f"API_SERVER_LOADED: {__file__}", flush=True)
+GATEWAY_URL = os.environ.get("GATEWAY_URL")
 
 Mode = Literal["ASSIST", "EXPLAIN_ONLY", "MANUAL_CONFIRM"]
 
@@ -114,11 +116,14 @@ def compute_fallback_response(req: DecisionRequest) -> DecisionResponse:
     return DecisionResponse(riskScore=risk, mode=mode, reason=reason, explanation=explanation)
 
 
-@app.post("/api/decision", response_model=DecisionResponse)
+@app.post("/workflow/decision", response_model=DecisionResponse)
 async def decision(req: DecisionRequest):
-    # Try to proxy to gateway on port 8002
-    gateway_url = "http://localhost:8002/workflow/decision"
-    
+    gateway_url = GATEWAY_URL
+
+    # If no gateway configured, always use fallback (Render default)
+    if not gateway_url:
+        return compute_fallback_response(req)
+
     try:
         async with httpx.AsyncClient(timeout=0.7) as client:
             response = await client.post(
@@ -132,7 +137,7 @@ async def decision(req: DecisionRequest):
                     "metrics": req.metrics.model_dump()
                 }
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 return DecisionResponse(
@@ -143,11 +148,11 @@ async def decision(req: DecisionRequest):
                 )
             else:
                 print(f"Gateway returned {response.status_code}, using fallback", flush=True)
-                
+
     except httpx.TimeoutException:
         print("Gateway timeout, using fallback", flush=True)
     except Exception as e:
         print(f"Gateway request failed: {e}, using fallback", flush=True)
-    
-    # Fallback to heuristic response
+
     return compute_fallback_response(req)
+
