@@ -14,8 +14,6 @@ A risk-aware Tetris game with AI-assisted decision making and agent comparison f
    - **Risk Factors**: Specific reasons for the score
    - **Guardrails**: Actionable warnings
 
-
-
 ## Design Iterations
 
 The project evolved through three iterations to find the optimal approach for AI-assisted gameplay:
