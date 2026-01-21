@@ -47,12 +47,7 @@ export async function requestDecision(req: SamDecisionRequest): Promise<SamDecis
   try {
     const SAM_BASE_URL = import.meta.env.VITE_SAM_BASE_URL || 'http://localhost:8002';
 
-    // If it's a deployed URL (https://...), use FastAPI endpoint
-    const isRemote = SAM_BASE_URL.startsWith('http') && !SAM_BASE_URL.includes('localhost');
-
-    const endpoint = isRemote
-      ? `${SAM_BASE_URL}/api/decision`
-      : `${SAM_BASE_URL}/workflow/decision`;
+    const endpoint = `${SAM_BASE_URL}/workflow/decision`;
 
 
     const response = await fetch(endpoint, {
